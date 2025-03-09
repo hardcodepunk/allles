@@ -1,11 +1,11 @@
-// vite.config.js
 import { defineConfig } from 'vite';
+import glsl from 'vite-plugin-glsl';
 
 export default defineConfig({
+  plugins: [glsl()],
   resolve: {
     alias: {
-      'three': 'node_modules/three/build/three.module.js', // Ensure correct path for three.js
+      'three': 'three'
     },
   },
 });
-

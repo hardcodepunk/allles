@@ -42,25 +42,41 @@ assetLoader.load(womanUrl.href, function (gltf) {
     console.error("Error loading model:", error);
 });
 
-// Create Sphere (Hidden Initially)
-const sphereGeometry = new THREE.IcosahedronGeometry(4, 30);
-const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-sphere.position.set(0, 1, 0.5); // Move forward in front of the background
-sphere.scale.set(0.1, 0.1, 0.1); // Make it larger
-sphere.visible = true; // Force visibility
+// Create Sphere
+// const sphereGeometry = new THREE.IcosahedronGeometry(4, 30);
+// const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+// const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+// sphere.position.set(0, 1, 0.5); // Move forward in front of the background
+// sphere.scale.set(0.1, 0.1, 0.1); // Make it larger
+// sphere.visible = false; // Force visibility
 
-scene.add(sphere);
+// scene.add(sphere);
 
-console.log("Sphere added:", sphere);
-console.log("Sphere position:", sphere.position);
-console.log("Sphere visible:", sphere.visible);
+async function loadShader(url) {
+  const response = await fetch(url);
+  return response.text();
+}
 
-renderer.render(scene, camera);
-console.log("Manually forced a render.");
+async function createCustomMaterial() {
+  // Fetch vertex and fragment shaders from public folder
+  const vertexShader = await loadShader('./shaders/vertexShader.vert');
+  const fragmentShader = await loadShader('./shaders/fragmentShader.frag');
 
+  return new THREE.ShaderMaterial({
+      vertexShader,
+      fragmentShader,
+      uniforms: {
+          u_time: { value: 0.0 }
+      }
+  });
+}
 
-
+createCustomMaterial().then(material => {
+  const geo = new THREE.IcosahedronGeometry(4, 30);
+  const sphere = new THREE.Mesh(geo, mat);
+  sphere.customDepthMaterial = new THREE.MeshDepthMaterial();
+  scene.add(sphere);
+});
 
 // Scroll event listener (Animate and Swap at 1/3 Scroll)
 window.addEventListener('scroll', () => {
@@ -136,7 +152,7 @@ for (let i = 0; i < hoverToToggleElements.length; i++) {
 const checkHoverClass = () => {
   if (window.innerWidth < 1200) {
     whatInfoPopup.classList.remove("js-is-displayed");
-    return; // Exit early for small screens
+    return;
   }
 
   let isHovered = false;

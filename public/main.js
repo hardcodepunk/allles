@@ -5,40 +5,29 @@ const womanUrl = new URL('/woman.glb', import.meta.url);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  alpha: true,
-});
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 
 const container = document.getElementById('mesh');
 
 if (container) {
-  document.body.appendChild(container);
   container.appendChild(renderer.domElement);
 }
 
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight);
-
 camera.position.set(0, 1, 2);
 
 // Lights
 const mainLight = new THREE.PointLight('white', 1);
 mainLight.position.set(10, 5, 0);
-
 const secondLight = new THREE.PointLight('#fde58b', 0.2);
 secondLight.position.set(-5, 5, 0);
-
 const ambientLight = new THREE.AmbientLight('white', 0.1);
-
 scene.add(mainLight, secondLight, ambientLight);
 
-// Model
+// Model Loader
 const assetLoader = new GLTFLoader();
-let mixer;
-let animationAction;
-let model;
+let mixer, animationAction, model;
 
 assetLoader.load(womanUrl.href, function (gltf) {
     model = gltf.scene;
@@ -49,75 +38,73 @@ assetLoader.load(womanUrl.href, function (gltf) {
     const clip = THREE.AnimationClip.findByName(clips, 'Action');
     animationAction = mixer.clipAction(clip);
     animationAction.play();
+}, undefined, function (error) {
+    console.error("Error loading model:", error);
 });
 
-// Scroll event listener
+// Create Sphere (Hidden Initially)
+const sphereGeometry = new THREE.IcosahedronGeometry(4, 30);
+const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+sphere.position.set(0, 1, 0.5); // Move forward in front of the background
+sphere.scale.set(0.1, 0.1, 0.1); // Make it larger
+sphere.visible = true; // Force visibility
+
+scene.add(sphere);
+
+console.log("Sphere added:", sphere);
+console.log("Sphere position:", sphere.position);
+console.log("Sphere visible:", sphere.visible);
+
+renderer.render(scene, camera);
+console.log("Manually forced a render.");
+
+
+
+
+// Scroll event listener (Animate and Swap at 1/3 Scroll)
 window.addEventListener('scroll', () => {
-  if (mixer && animationAction && model) {
-      const scrollPercent = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
-      const animationEndPoint = 1 / 3;
+    if (mixer && animationAction && model) {
+        const scrollPercent = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+        const animationEndPoint = 1 / 3;
 
-      // Set new light color at a specific scroll percentage
-      const startColor = new THREE.Color('white');
-      const endColor = new THREE.Color('#ffe059');
-
-      if (scrollPercent <= animationEndPoint) {
-          const adjustedScrollPercent = scrollPercent / animationEndPoint;
-          const duration = animationAction.getClip().duration;
-
-          // Animate model and light color
-          mixer.setTime(adjustedScrollPercent * duration);
-          model.rotation.y = adjustedScrollPercent * -Math.PI / 3; // Rotate model -π/3 radians (60 degrees)
-
-          // Interpolate color
-          mainLight.color.lerpColors(startColor, endColor, adjustedScrollPercent);
-          
-      } else {
-          // Ensure the animation and rotation remain at their end state
-          if (!animationAction.isRunning()) {
-              const duration = animationAction.getClip().duration;
-              mixer.setTime(duration); // Animation stays at its end
-              model.rotation.y = -Math.PI / 3; // Rotation stays at -π/3 radians
-
-              // Set light color to the final value
-              mainLight.color.copy(endColor);
-          }
-      }
-  }
+        if (scrollPercent <= animationEndPoint) {
+            // Model is visible and animating
+            const adjustedScrollPercent = scrollPercent / animationEndPoint;
+            const duration = animationAction.getClip().duration;
+            
+            mixer.setTime(adjustedScrollPercent * duration); // Only update animation on scroll
+            model.rotation.y = adjustedScrollPercent * -Math.PI / 3;
+            
+            // Ensure model is visible and sphere is hidden
+            model.visible = true;
+            sphere.visible = false;
+        } else {
+            // Hide model and show sphere at 1/3 scroll
+            model.visible = false;
+            sphere.visible = true;
+        }
+    }
 });
 
-window.addEventListener('scroll', function() {
-  const mesh = document.getElementById('mesh');
-  const scrollTop = window.scrollY;
-  const viewportHeight = window.innerHeight;
-
-  // Calculate scroll position in terms of percentage of 1 viewport height (i.e., 100vh)
-  const scrollFraction = scrollTop / viewportHeight;
-
-  // Move mesh by 2/3 of the viewport width when scrolled 1 viewport height (100%)
-  if (scrollFraction <= 1) {
-    mesh.style.transform = `translateX(${scrollFraction * (1 / 4) * 100}vw)`;
-  }
-});
-
-// Throttled resize event listener
+// Resize Handling
 let resizeTimeout;
 window.addEventListener('resize', () => {
-  clearTimeout(resizeTimeout);
-  resizeTimeout = setTimeout(() => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-  }, 200);
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+    }, 200);
 });
 
+// Animation loop (No continuous mixer update)
 function animate() {
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
 }
 
 animate();
-
 
 /*
  * Toggle on hover

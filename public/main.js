@@ -36,6 +36,7 @@ let mixer, animationAction, model;
 assetLoader.load(womanUrl.href, function (gltf) {
   model = gltf.scene;
   scene.add(model);
+  model.scale.set(2.5, 2.5, 2.5);
   mixer = new THREE.AnimationMixer(model);
   const clip = THREE.AnimationClip.findByName(gltf.animations, 'Action');
   animationAction = mixer.clipAction(clip);
@@ -56,23 +57,28 @@ async function createCustomMaterial() {
   const vertexShader = await loadShader('./shaders/vertexShader.vert');
   const fragmentShader = await loadShader('./shaders/fragmentShader.frag');
 
-  return new THREE.ShaderMaterial({
+  const material = new THREE.ShaderMaterial({
     vertexShader,
     fragmentShader,
     uniforms: {
-      u_time: { value: 0.0 }
+      u_time: { value: 0.0 },
+      uLightAPosition: { value: mainLight.position },
+      uLightAIntensity: { value: mainLight.intensity },
+      uLightBPosition: { value: secondLight.position },
+      uLightBIntensity: { value: secondLight.intensity }
     }
   });
-}
 
-createCustomMaterial().then(material => {
-  const geo = new THREE.IcosahedronGeometry(4, 30);
-  sphere = new THREE.Mesh(geo, material);
+  const geometry = new THREE.IcosahedronGeometry(4, 30);
+  sphere = new THREE.Mesh(geometry, material);
+  sphere.scale.set(0.6, 0.6, 0.6);
   sphere.customDepthMaterial = new THREE.MeshDepthMaterial();
   sphere.visible = false;
   scene.add(sphere);
   materialLoaded = true;
-});
+}
+
+createCustomMaterial();
 
 // Scroll logic: animate model until 1/3 scroll, then show sphere
 window.addEventListener('scroll', () => {
@@ -112,10 +118,9 @@ const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
 
-  // Time uniform update for shaders
-  if (materialLoaded && sphere) {
-    const elapsed = clock.getElapsedTime();
-    sphere.material.uniforms.u_time.value = elapsed;
+  // Update time for shader
+  if (materialLoaded && sphere && sphere.material.uniforms.u_time) {
+    sphere.material.uniforms.u_time.value = clock.getElapsedTime();
   }
 
   renderer.render(scene, camera);
